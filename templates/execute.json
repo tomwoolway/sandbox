@@ -1,0 +1,13 @@
+{
+    "requestId": "{{ request_id }}",
+    "payload": {
+        "commands": [{
+            "ids": {{ device_ids }},
+            "status": "SUCCESS",
+            "states": {
+                "on": {{ device_state }},
+                "online": true
+            }
+        }]
+    }
+}

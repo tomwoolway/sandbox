@@ -1,0 +1,123 @@
+{
+  "requestId": "{{ request_id }}",
+  "payload": {
+    "agentUserId": "1099",
+    "devices": [{
+      "id": "etekcity0329-3",
+      "type": "action.devices.types.LIGHT",
+      "traits": [
+        "action.devices.traits.OnOff"
+      ],
+      "roomHint": "master bedroom",
+      "name": {
+        "defaultNames": ["lamp"],
+        "name": "Bedside light",
+        "nicknames": ["Bedside light"]
+      },
+      "willReportState": false
+    },
+    {
+      "id": "etekcity0329-1",
+      "type": "action.devices.types.LIGHT",
+      "traits": [
+        "action.devices.traits.OnOff"
+      ],
+      "roomHint": "living room",
+      "name": {
+        "defaultNames": ["lamp"],
+        "name": "Angle Poise Light",
+        "nicknames": ["angle poise", "left lamp", "light by the windows"]
+      },
+      "willReportState": false
+    },
+    {
+      "id": "ceilingfan-bedroom-1357",
+      "type": "action.devices.types.LIGHT",
+      "traits": [
+        "action.devices.traits.OnOff",
+        "action.devices.traits.Modes"
+      ],
+      "roomHint": "master bedroom",
+      "name": {
+        "defaultNames": ["Bedroom fan"],
+        "name": "Bedroom ceiling fan",
+        "nicknames": ["Bedroom fan", "bedroom ceiling light", "bedroom ceiling light", "bedroom ceiling fan"]
+      },
+      "willReportState": false,
+      "attributes":{
+               "availableModes":[
+                  {
+                     "name":"speed",
+                     "name_values":[
+                        {
+                           "name_synonym":[
+                              "strength",
+                              "speed",
+                              "power"
+                           ],
+                           "lang":"en"
+                        }
+                     ],
+                     "settings":[
+                        {
+                           "setting_name":"low",
+                           "setting_values":[
+                              {
+                                 "setting_synonym":[
+                                    "low",
+                                    "light",
+                                    "slow"
+                                 ],
+                                 "lang":"en"
+                              }
+                           ]
+                        },
+                        {
+                           "setting_name":"medium",
+                           "setting_values":[
+                              {
+                                 "setting_synonym":[
+                                    "medium",
+                                    "middle"
+                                 ],
+                                 "lang":"en"
+                              }
+                           ]
+                        },
+                        {
+                           "setting_name":"high",
+                           "setting_values":[
+                              {
+                                 "setting_synonym":[
+                                    "high",
+                                    "full",
+                                    "strong",
+                                    "fast"
+                                 ],
+                                 "lang":"en"
+                              }
+                           ]
+                        }
+                     ],
+                     "ordered":true
+                  }
+               ]
+            }
+    },
+    {
+      "id": "etekcity0329-5",
+      "type": "action.devices.types.LIGHT",
+      "traits": [
+        "action.devices.traits.OnOff"
+      ],
+      "roomHint": "living room",
+      "name": {
+        "defaultNames": ["Christmas Tree Lights"],
+        "name": "Christmas Tree Lights",
+        "nicknames": ["tree lights", "christmas tree lights", "lights on the tree"]
+      },
+      "willReportState": false
+    }
+    ]
+  }
+}
