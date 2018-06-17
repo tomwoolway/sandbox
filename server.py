@@ -39,140 +39,150 @@ CEILING_FAN_PINS = {
 
 OAUTH_REDIRECT_URL = '%s#access_token=%s&token_type=bearer&state=%s'
 
-def switch_ceiling_fan(fan_mode):
-    print "Toggling ceiling fan to %s" % fan_mode
-    pin = CEILING_FAN_PINS.get(fan_mode)
-    GPIO.output(pin, 0)
-    time.sleep(1)
-    GPIO.output(pin, 1)
+class Assistant:
+    current_fan_speed = 'off'
 
-@celery.task
-def switch_socket(socket, state):
-    print "Switching socket %s to %s" % (socket, state)
-    rc = subprocess.call(['sudo', 'pilight-send', '-p', 'raw', '-c', '"%s"' % SOCKETS[socket][state]])
+    def switch_ceiling_fan(fan_mode):
+        print "Toggling ceiling fan to %s" % fan_mode
+        if fan_mode != 'light':
+            self.current_fan_speed = fan_mode
 
-def handle_execute_intent(request_id, intent):
-    print intent
-    payload = intent.get('payload')
-    commands = payload.get('commands')
-    acted_upon_devices = []
-    fan_mode = None
-    for c in commands:
-        devices = c.get('devices')
-        executions = c.get('execution')
-        for d in devices:
-            for e in executions:
-                device_id = d.get('id')
-                command = e.get('command')
-                if command == 'action.devices.commands.OnOff':
-                    turn_on = e.get('params').get('on')
-                    acted_upon_devices.append(device_id)
-                    device_state = turn_on
-                    if device_id == '401MHz-ceilingfan-bedroom-1357':
-                        fan_mode = 'low' if turn_on else 'off'
-                    elif device_id == '401MHz-ceiling-light-bedroom-1357':
-                        fan_mode = 'light'
-                elif command == "action.devices.commands.SetFanSpeed":
-                    acted_upon_devices.append(device_id)
-                    fan_mode = e.get('params').get('fanSpeed')
+        pin = CEILING_FAN_PINS.get(fan_mode)
+        GPIO.output(pin, 0)
+        time.sleep(1)
+        GPIO.output(pin, 1)
 
-        for device_id in acted_upon_devices:
-            if 'etekcity' in device_id:
-                for i in xrange(0, 10):
-                    switch_socket.delay(device_id, 'on' if device_state else 'off')
-            elif '401MHz' in device_id:
-                switch_ceiling_fan(fan_mode)
+    @celery.task
+    def switch_socket(socket, state):
+        print "Switching socket %s to %s" % (socket, state)
+        rc = subprocess.call(['sudo', 'pilight-send', '-p', 'raw', '-c', '"%s"' % SOCKETS[socket][state]])
 
-    r = render_template('execute.json',
-        request_id=request_id,
-        device_ids=json.dumps(acted_upon_devices),
-        device_state="true" if device_state else "false")
+    def handle_execute_intent(request_id, intent):
+        payload = intent.get('payload')
+        commands = payload.get('commands')
+        acted_upon_devices = []
+        fan_mode = None
+        for c in commands:
+            devices = c.get('devices')
+            executions = c.get('execution')
+            for d in devices:
+                for e in executions:
+                    device_id = d.get('id')
+                    command = e.get('command')
+                    if command == 'action.devices.commands.OnOff':
+                        turn_on = e.get('params').get('on')
+                        acted_upon_devices.append(device_id)
+                        device_state = turn_on
+                        if device_id == '401MHz-ceilingfan-bedroom-1357':
+                            fan_mode = 'low' if turn_on else 'off'
+                        elif device_id == '401MHz-ceiling-light-bedroom-1357':
+                            fan_mode = 'light'
+                    elif command == "action.devices.commands.SetFanSpeed":
+                        acted_upon_devices.append(device_id)
+                        fan_mode = e.get('params').get('fanSpeed')
 
-    return r
+            for device_id in acted_upon_devices:
+                if 'etekcity' in device_id:
+                    for i in xrange(0, 10):
+                        self.switch_socket.delay(device_id, 'on' if device_state else 'off')
+                elif '401MHz' in device_id:
+                    self.switch_ceiling_fan(fan_mode)
 
-def handle_query_intent(request_id, intent):
-    return ''
+        r = self.render_template('execute.json',
+            request_id=request_id,
+            device_ids=json.dumps(acted_upon_devices),
+            device_state="true" if device_state else "false")
 
-@app.route('/google-assistant/', methods=['POST'])
-def google_assistant():
-    body = request.json
-    request_id = body.get('request_id')
-    inputs = body.get('inputs')
+        return r
 
-    for ip in inputs:
-        intent = ip.get('intent')
-        if intent == 'action.devices.SYNC':
-            return render_template('sync.json', request_id=request_id)
-        elif intent == 'action.devices.QUERY':
-            return handle_query_intent(request_id, ip)
-        elif intent == 'action.devices.EXECUTE':
-            return handle_execute_intent(request_id, ip)
+    def handle_query_intent(request_id, intent):
+        r = self.render_template('query.json',
+            request_id=request_id,
+            is_fan_on=False if self.current_fan_speed == 'off' else 'true',
+            current_fan_speed=self.current_fan_speed)
 
-@app.route('/resync')
-def resync():
-    url = 'https://homegraph.googleapis.com/v1/devices:requestSync'
-    body = {
-        'agent_user_id' : '1099'
-    }
-    params = {
-        'key' : CONFIG['google']['resync_key']
-    }
-    r = requests.post(url, json=body, params=params)
-    return r.text
+        print r
 
-@app.route('/livingroom/lights/<state>')
-def sockets(state):
-    if state not in ('on', 'off'):
-        abort('404')
+        return r
 
-    i = 0
-    while (i < 5):
-        switch_socket(4, state)
-        i+=1
+    @app.route('/google-assistant/', methods=['POST'])
+    def google_assistant():
+        body = request.json
+        print body
+        request_id = body.get('request_id')
+        inputs = body.get('inputs')
 
-    return 'Turned living room lights %s' % (state)
+        for ip in inputs:
+            intent = ip.get('intent')
+            if intent == 'action.devices.SYNC':
+                return self.render_template('sync.json', request_id=request_id)
+            elif intent == 'action.devices.QUERY':
+                return self.handle_query_intent(request_id, ip)
+            elif intent == 'action.devices.EXECUTE':
+                return self.handle_execute_intent(request_id, ip)
 
-@app.route('/listonic')
-def listonic():
-    name = request.args.get('name')
-    payload = {
-        'listId': "12307143",
-        'name': name,
-        'CategoryId': 1
-    }
+    @app.route('/resync')
+    def resync():
+        url = 'https://homegraph.googleapis.com/v1/devices:requestSync'
+        body = {
+            'agent_user_id' : '1099'
+        }
+        params = {
+            'key' : CONFIG['google']['resync_key']
+        }
+        r = requests.post(url, json=body, params=params)
+        return r.text
 
-    headers = {
-         'Authorization' : 'Bearer %s'
-    }
+    @app.route('/livingroom/lights/<state>')
+    def sockets(state):
+        if state not in ('on', 'off'):
+            abort('404')
 
-    r = requests.post('https://hl2api.listonic.com/api/lists/12307143/items',
-                      headers=headers, json=payload)
-    return r
+        i = 0
+        while (i < 5):
+            self.switch_socket(4, state)
+            i+=1
 
-@app.route('/auth')
-def auth():
-    client_id = request.args.get('client_id')
-    redirect_uri = request.args.get('redirect_uri')
-    state = request.args.get('state')
-    response_type = request.args.get('response_type')
+        return 'Turned living room lights %s' % (state)
 
-    #if (client_id != 'google-actions' or
-    #    redirect_uri != 'https://oauth-redirect.googleusercontent.com/r/home-actions-188521'):
-    #    return 'Hello'
+    @app.route('/listonic')
+    def listonic():
+        name = request.args.get('name')
+        payload = {
+            'listId': "12307143",
+            'name': name,
+            'CategoryId': 1
+        }
 
-    access_token = CONFIG['google']['access_token']
+        headers = {
+             'Authorization' : 'Bearer %s'
+        }
 
-    print redirect_uri
+        r = requests.post('https://hl2api.listonic.com/api/lists/12307143/items',
+                          headers=headers, json=payload)
+        return r
 
-    redirect_url = OAUTH_REDIRECT_URL % (redirect_uri, access_token, state)
-    return redirect(redirect_url, code=302)
+    @app.route('/auth')
+    def auth():
+        client_id = request.args.get('client_id')
+        redirect_uri = request.args.get('redirect_uri')
+        state = request.args.get('state')
+        response_type = request.args.get('response_type')
 
-def main():
-    GPIO.setmode(GPIO.BOARD)
-    for v in CEILING_FAN_PINS.values():
-        GPIO.setup(v, GPIO.OUT, initial=1)
+        access_token = CONFIG['google']['access_token']
 
-    app.run(port=80, debug=True)
+        print redirect_uri
+
+        redirect_url = OAUTH_REDIRECT_URL % (redirect_uri, access_token, state)
+        return redirect(redirect_url, code=302)
+
+    def main():
+        GPIO.setmode(GPIO.BOARD)
+        for v in CEILING_FAN_PINS.values():
+            GPIO.setup(v, GPIO.OUT, initial=1)
+
+        app.run(port=80, debug=True)
 
 if __name__ == '__main__':
-    main()
+    assistant = Assistant()
+    assistant.main()

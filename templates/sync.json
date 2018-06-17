@@ -27,9 +27,9 @@
       "name": {
         "defaultNames": ["Bedroom fan"],
         "name": "Bedroom ceiling fan",
-        "nicknames": ["Bedroom Fan", "bedroom ceiling fan"]
+        "nicknames": ["Bedroom Fan", "bedroom ceiling fan", "fan"]
       },
-      "willReportState": false,
+      "willReportState": true,
       "attributes": {
         "availableFanSpeeds": {
           "speeds": [{
@@ -51,7 +51,7 @@
             {
               "speed_name": "high",
               "speed_values": [{
-                  "speed_synonym": ["high", "strong", "full", "100%"],
+                  "speed_synonym": ["high", "strong", "full", "100%", "max", "highest"],
                   "lang": "en"
                 }
               ]
