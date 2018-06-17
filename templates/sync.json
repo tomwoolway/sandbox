@@ -65,7 +65,8 @@
             }
           ],
           "ordered": true
-        }
+        },
+        "reversible" : false
       }
     },
     {
