@@ -42,7 +42,7 @@ OAUTH_REDIRECT_URL = '%s#access_token=%s&token_type=bearer&state=%s'
 class Assistant:
     current_fan_speed = 'off'
 
-    def switch_ceiling_fan(fan_mode):
+    def switch_ceiling_fan(self, fan_mode):
         print "Toggling ceiling fan to %s" % fan_mode
         if fan_mode != 'light':
             self.current_fan_speed = fan_mode
@@ -53,11 +53,11 @@ class Assistant:
         GPIO.output(pin, 1)
 
     @celery.task
-    def switch_socket(socket, state):
+    def switch_socket(self, socket, state):
         print "Switching socket %s to %s" % (socket, state)
         rc = subprocess.call(['sudo', 'pilight-send', '-p', 'raw', '-c', '"%s"' % SOCKETS[socket][state]])
 
-    def handle_execute_intent(request_id, intent):
+    def handle_execute_intent(self, request_id, intent):
         payload = intent.get('payload')
         commands = payload.get('commands')
         acted_upon_devices = []
@@ -95,7 +95,7 @@ class Assistant:
 
         return r
 
-    def handle_query_intent(request_id, intent):
+    def handle_query_intent(self, request_id, intent):
         r = self.render_template('query.json',
             request_id=request_id,
             is_fan_on=False if self.current_fan_speed == 'off' else 'true',
@@ -106,7 +106,7 @@ class Assistant:
         return r
 
     @app.route('/google-assistant/', methods=['POST'])
-    def google_assistant():
+    def google_assistant(self):
         body = request.json
         print body
         request_id = body.get('request_id')
@@ -122,7 +122,7 @@ class Assistant:
                 return self.handle_execute_intent(request_id, ip)
 
     @app.route('/resync')
-    def resync():
+    def resync(self):
         url = 'https://homegraph.googleapis.com/v1/devices:requestSync'
         body = {
             'agent_user_id' : '1099'
@@ -134,7 +134,7 @@ class Assistant:
         return r.text
 
     @app.route('/livingroom/lights/<state>')
-    def sockets(state):
+    def sockets(self, state):
         if state not in ('on', 'off'):
             abort('404')
 
@@ -146,7 +146,7 @@ class Assistant:
         return 'Turned living room lights %s' % (state)
 
     @app.route('/listonic')
-    def listonic():
+    def listonic(self):
         name = request.args.get('name')
         payload = {
             'listId': "12307143",
@@ -163,7 +163,7 @@ class Assistant:
         return r
 
     @app.route('/auth')
-    def auth():
+    def auth(self):
         client_id = request.args.get('client_id')
         redirect_uri = request.args.get('redirect_uri')
         state = request.args.get('state')
@@ -176,7 +176,7 @@ class Assistant:
         redirect_url = OAUTH_REDIRECT_URL % (redirect_uri, access_token, state)
         return redirect(redirect_url, code=302)
 
-    def main():
+    def main(self):
         GPIO.setmode(GPIO.BOARD)
         for v in CEILING_FAN_PINS.values():
             GPIO.setup(v, GPIO.OUT, initial=1)
