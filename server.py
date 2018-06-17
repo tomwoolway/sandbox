@@ -96,7 +96,7 @@ def handle_execute_intent(request_id, intent):
     return r
 
 def handle_query_intent(request_id, intent):
-    print 'Got request ID %s' % request_id 
+    print 'Got request ID %s' % request_id
 
     r = render_template('query.json',
         request_id=request_id,
@@ -111,7 +111,7 @@ def handle_query_intent(request_id, intent):
 def google_assistant():
     body = request.json
     print body
-    request_id = body.get('request_id')
+    request_id = body.get('requestId')
     inputs = body.get('inputs')
 
     for ip in inputs:
