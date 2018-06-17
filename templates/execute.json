@@ -6,8 +6,8 @@
             "status": "SUCCESS",
             "states": {
                 "on": {{ device_state }},
-                "online": true
-                "currentFanSpeedSetting" : {{ current_fan_speed }}
+                "online": true,
+                "currentFanSpeedSetting" : "{{ current_fan_speed }}"
             }
         }]
     }
