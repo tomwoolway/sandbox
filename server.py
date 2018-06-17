@@ -9,8 +9,11 @@ from celery import Celery
 
 app = Flask(__name__)
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379'
-
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+
+globals = {
+    'current_fan_speed' : 'off'
+}
 
 CONFIG = json.load(open('config.json'))
 
@@ -39,150 +42,146 @@ CEILING_FAN_PINS = {
 
 OAUTH_REDIRECT_URL = '%s#access_token=%s&token_type=bearer&state=%s'
 
-class Assistant:
-    current_fan_speed = 'off'
+def switch_ceiling_fan(fan_mode):
+    print "Toggling ceiling fan to %s" % fan_mode
+    if fan_mode != 'light':
+        globals['current_fan_speed'] = fan_mode
 
-    def switch_ceiling_fan(self, fan_mode):
-        print "Toggling ceiling fan to %s" % fan_mode
-        if fan_mode != 'light':
-            self.current_fan_speed = fan_mode
+    pin = CEILING_FAN_PINS.get(fan_mode)
+    GPIO.output(pin, 0)
+    time.sleep(1)
+    GPIO.output(pin, 1)
 
-        pin = CEILING_FAN_PINS.get(fan_mode)
-        GPIO.output(pin, 0)
-        time.sleep(1)
-        GPIO.output(pin, 1)
+@celery.task
+def switch_socket(socket, state):
+    print "Switching socket %s to %s" % (socket, state)
+    rc = subprocess.call(['sudo', 'pilight-send', '-p', 'raw', '-c', '"%s"' % SOCKETS[socket][state]])
 
-    @celery.task
-    def switch_socket(self, socket, state):
-        print "Switching socket %s to %s" % (socket, state)
-        rc = subprocess.call(['sudo', 'pilight-send', '-p', 'raw', '-c', '"%s"' % SOCKETS[socket][state]])
+def handle_execute_intent(request_id, intent):
+    payload = intent.get('payload')
+    commands = payload.get('commands')
+    acted_upon_devices = []
+    fan_mode = None
+    for c in commands:
+        devices = c.get('devices')
+        executions = c.get('execution')
+        for d in devices:
+            for e in executions:
+                device_id = d.get('id')
+                command = e.get('command')
+                if command == 'action.devices.commands.OnOff':
+                    turn_on = e.get('params').get('on')
+                    acted_upon_devices.append(device_id)
+                    device_state = turn_on
+                    if device_id == '401MHz-ceilingfan-bedroom-1357':
+                        fan_mode = 'low' if turn_on else 'off'
+                    elif device_id == '401MHz-ceiling-light-bedroom-1357':
+                        fan_mode = 'light'
+                elif command == "action.devices.commands.SetFanSpeed":
+                    acted_upon_devices.append(device_id)
+                    fan_mode = e.get('params').get('fanSpeed')
 
-    def handle_execute_intent(self, request_id, intent):
-        payload = intent.get('payload')
-        commands = payload.get('commands')
-        acted_upon_devices = []
-        fan_mode = None
-        for c in commands:
-            devices = c.get('devices')
-            executions = c.get('execution')
-            for d in devices:
-                for e in executions:
-                    device_id = d.get('id')
-                    command = e.get('command')
-                    if command == 'action.devices.commands.OnOff':
-                        turn_on = e.get('params').get('on')
-                        acted_upon_devices.append(device_id)
-                        device_state = turn_on
-                        if device_id == '401MHz-ceilingfan-bedroom-1357':
-                            fan_mode = 'low' if turn_on else 'off'
-                        elif device_id == '401MHz-ceiling-light-bedroom-1357':
-                            fan_mode = 'light'
-                    elif command == "action.devices.commands.SetFanSpeed":
-                        acted_upon_devices.append(device_id)
-                        fan_mode = e.get('params').get('fanSpeed')
+        for device_id in acted_upon_devices:
+            if 'etekcity' in device_id:
+                for i in xrange(0, 10):
+                    switch_socket.delay(device_id, 'on' if device_state else 'off')
+            elif '401MHz' in device_id:
+                switch_ceiling_fan(fan_mode)
 
-            for device_id in acted_upon_devices:
-                if 'etekcity' in device_id:
-                    for i in xrange(0, 10):
-                        self.switch_socket.delay(device_id, 'on' if device_state else 'off')
-                elif '401MHz' in device_id:
-                    self.switch_ceiling_fan(fan_mode)
+    r = render_template('execute.json',
+        request_id=request_id,
+        device_ids=json.dumps(acted_upon_devices),
+        device_state="true" if device_state else "false")
 
-        r = self.render_template('execute.json',
-            request_id=request_id,
-            device_ids=json.dumps(acted_upon_devices),
-            device_state="true" if device_state else "false")
+    return r
 
-        return r
+def handle_query_intent(request_id, intent):
+    r = render_template('query.json',
+        request_id=request_id,
+        is_fan_on=False if globals['current_fan_speed'] == 'off' else 'true',
+        current_fan_speed=globals['current_fan_speed'])
 
-    def handle_query_intent(self, request_id, intent):
-        r = self.render_template('query.json',
-            request_id=request_id,
-            is_fan_on=False if self.current_fan_speed == 'off' else 'true',
-            current_fan_speed=self.current_fan_speed)
+    print r
 
-        print r
+    return r
 
-        return r
+@app.route('/google-assistant/', methods=['POST'])
+def google_assistant():
+    body = request.json
+    print body
+    request_id = body.get('request_id')
+    inputs = body.get('inputs')
 
-    @app.route('/google-assistant/', methods=['POST'])
-    def google_assistant(self):
-        body = request.json
-        print body
-        request_id = body.get('request_id')
-        inputs = body.get('inputs')
+    for ip in inputs:
+        intent = ip.get('intent')
+        if intent == 'action.devices.SYNC':
+            return render_template('sync.json', request_id=request_id)
+        elif intent == 'action.devices.QUERY':
+            return handle_query_intent(request_id, ip)
+        elif intent == 'action.devices.EXECUTE':
+            return handle_execute_intent(request_id, ip)
 
-        for ip in inputs:
-            intent = ip.get('intent')
-            if intent == 'action.devices.SYNC':
-                return self.render_template('sync.json', request_id=request_id)
-            elif intent == 'action.devices.QUERY':
-                return self.handle_query_intent(request_id, ip)
-            elif intent == 'action.devices.EXECUTE':
-                return self.handle_execute_intent(request_id, ip)
+@app.route('/resync')
+def resync():
+    url = 'https://homegraph.googleapis.com/v1/devices:requestSync'
+    body = {
+        'agent_user_id' : '1099'
+    }
+    params = {
+        'key' : CONFIG['google']['resync_key']
+    }
+    r = requests.post(url, json=body, params=params)
+    return r.text
 
-    @app.route('/resync')
-    def resync(self):
-        url = 'https://homegraph.googleapis.com/v1/devices:requestSync'
-        body = {
-            'agent_user_id' : '1099'
-        }
-        params = {
-            'key' : CONFIG['google']['resync_key']
-        }
-        r = requests.post(url, json=body, params=params)
-        return r.text
+@app.route('/livingroom/lights/<state>')
+def sockets(state):
+    if state not in ('on', 'off'):
+        abort('404')
 
-    @app.route('/livingroom/lights/<state>')
-    def sockets(self, state):
-        if state not in ('on', 'off'):
-            abort('404')
+    i = 0
+    while (i < 5):
+        switch_socket(4, state)
+        i+=1
 
-        i = 0
-        while (i < 5):
-            self.switch_socket(4, state)
-            i+=1
+    return 'Turned living room lights %s' % (state)
 
-        return 'Turned living room lights %s' % (state)
+@app.route('/listonic')
+def listonic():
+    name = request.args.get('name')
+    payload = {
+        'listId': "12307143",
+        'name': name,
+        'CategoryId': 1
+    }
 
-    @app.route('/listonic')
-    def listonic(self):
-        name = request.args.get('name')
-        payload = {
-            'listId': "12307143",
-            'name': name,
-            'CategoryId': 1
-        }
+    headers = {
+         'Authorization' : 'Bearer %s'
+    }
 
-        headers = {
-             'Authorization' : 'Bearer %s'
-        }
+    r = requests.post('https://hl2api.listonic.com/api/lists/12307143/items',
+                      headers=headers, json=payload)
+    return r
 
-        r = requests.post('https://hl2api.listonic.com/api/lists/12307143/items',
-                          headers=headers, json=payload)
-        return r
+@app.route('/auth')
+def auth():
+    client_id = request.args.get('client_id')
+    redirect_uri = request.args.get('redirect_uri')
+    state = request.args.get('state')
+    response_type = request.args.get('response_type')
 
-    @app.route('/auth')
-    def auth(self):
-        client_id = request.args.get('client_id')
-        redirect_uri = request.args.get('redirect_uri')
-        state = request.args.get('state')
-        response_type = request.args.get('response_type')
+    access_token = CONFIG['google']['access_token']
 
-        access_token = CONFIG['google']['access_token']
+    print redirect_uri
 
-        print redirect_uri
+    redirect_url = OAUTH_REDIRECT_URL % (redirect_uri, access_token, state)
+    return redirect(redirect_url, code=302)
 
-        redirect_url = OAUTH_REDIRECT_URL % (redirect_uri, access_token, state)
-        return redirect(redirect_url, code=302)
+def main():
+    GPIO.setmode(GPIO.BOARD)
+    for v in CEILING_FAN_PINS.values():
+        GPIO.setup(v, GPIO.OUT, initial=1)
 
-    def main(self):
-        GPIO.setmode(GPIO.BOARD)
-        for v in CEILING_FAN_PINS.values():
-            GPIO.setup(v, GPIO.OUT, initial=1)
-
-        app.run(port=80, debug=True)
+    app.run(port=80, debug=True)
 
 if __name__ == '__main__':
-    assistant = Assistant()
-    assistant.main()
+    main()
