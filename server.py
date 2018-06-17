@@ -87,11 +87,13 @@ def handle_execute_intent(request_id, intent):
                     switch_socket.delay(device_id, 'on' if device_state else 'off')
             elif '401MHz' in device_id:
                 switch_ceiling_fan(fan_mode)
+                device_state = False if globals['current_fan_speed'] == 'off' else 'true'
 
     r = render_template('execute.json',
         request_id=request_id,
         device_ids=json.dumps(acted_upon_devices),
-        device_state="true" if device_state else "false")
+        device_state=True if device_state else False,
+        current_fan_speed=globals['current_fan_speed']))
 
     return r
 
