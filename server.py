@@ -96,6 +96,8 @@ def handle_execute_intent(request_id, intent):
     return r
 
 def handle_query_intent(request_id, intent):
+    print 'Got request ID %s' % request_id 
+
     r = render_template('query.json',
         request_id=request_id,
         is_fan_on=False if globals['current_fan_speed'] == 'off' else 'true',
