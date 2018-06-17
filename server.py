@@ -80,13 +80,13 @@ def handle_execute_intent(request_id, intent):
             if 'etekcity' in device_id:
                 for i in xrange(0, 10):
                     switch_socket.delay(device_id, 'on' if device_state else 'off')
-            elif device_id == '401MHz-ceiling-light-bedroom-1357':
+            elif '401MHz' in device_id:
                 switch_ceiling_fan(fan_mode)
 
     r = render_template('execute.json',
-                           request_id=request_id,
-                           device_ids=json.dumps(acted_upon_devices),
-                           device_state="true" if device_state else "false")
+        request_id=request_id,
+        device_ids=json.dumps(acted_upon_devices),
+        device_state="true" if device_state else "false")
 
     return r
 

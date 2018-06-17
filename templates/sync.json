@@ -27,7 +27,7 @@
       "name": {
         "defaultNames": ["Bedroom fan"],
         "name": "Bedroom ceiling fan",
-        "nicknames": ["Bedroom fan", "bedroom ceiling light", "bedroom ceiling light", "bedroom ceiling fan"]
+        "nicknames": ["Bedroom Fan", "bedroom ceiling fan"]
       },
       "willReportState": false,
       "attributes": {
