@@ -69,7 +69,7 @@ def handle_execute_intent(request_id, intent):
                     device_state = turn_on
                     if device_id == '401MHz-ceilingfan-bedroom-1357':
                         fan_mode = 'low' if turn_on == 'on' else 'off'
-                    elif device_id == '401MHz-ceiling-light-bedroom-1357'
+                    elif device_id == '401MHz-ceiling-light-bedroom-1357':
                         fan_mode = 'light'
                 elif command == "action.devices.commands.SetFanSpeed":
                     acted_upon_devices.append(device_id)
