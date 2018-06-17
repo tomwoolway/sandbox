@@ -33,14 +33,14 @@ CEILING_FAN_PINS = {
     'light' : 18,
     'low' : 16,
     'med' : 22,
-    'high' : 12, #should be 29
+    'high' : 29,
     'off' : 12
 }
 
 OAUTH_REDIRECT_URL = '%s#access_token=%s&token_type=bearer&state=%s'
 
 def switch_ceiling_fan(fan_mode):
-    print "Toggling ceiling fan"
+    print "Toggling ceiling fan to %s" % fan_mode
     pin = CEILING_FAN_PINS.get(fan_mode)
     GPIO.output(pin, 0)
     time.sleep(1)
