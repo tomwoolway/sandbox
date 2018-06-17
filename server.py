@@ -12,6 +12,8 @@ app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379'
 
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 
+CONFIG = json.load(open('config.json'))
+
 SOCKETS = {
     'etekcity0329-1':  {
         'on' : '176 528 208 528 192 528 560 176 192 528 192 528 192 544 208 528 192 544 192 544 192 528 560 176 208 528 560 160 192 544 560 176 192 544 192 528 560 176 560 176 192 544 192 544 560 176 560 176 192 5632',
@@ -65,19 +67,20 @@ def handle_execute_intent(request_id, intent):
                     turn_on = e.get('params').get('on')
                     acted_upon_devices.append(device_id)
                     device_state = turn_on
-                    fan_mode = 'light'
-                elif command == "action.devices.commands.SetModes":
+                    if device_id == '401MHz-ceilingfan-bedroom-1357':
+                        fan_mode = 'low' if turn_on == 'on' else 'off'
+                    elif device_id == '401MHz-ceiling-light-bedroom-1357'
+                        fan_mode = 'light'
+                elif command == "action.devices.commands.SetFanSpeed":
                     acted_upon_devices.append(device_id)
-                    fan_mode = e.get('params').get('updateModeSettings').get('speed')
-    
-    if "ceilingfan-bedroom-1357" in acted_upon_devices:
-        switch_ceiling_fan(fan_mode)
+                    fan_mode = e.get('params').get('fanSpeed')
 
-    for i in xrange(0, 10):
         for device_id in acted_upon_devices:
-            if device_id == "ceilingfan-bedroom-1357":
-                continue
-            switch_socket.delay(device_id, 'on' if device_state else 'off')
+            if 'etekcity' in device_id:
+                for i in xrange(0, 10):
+                    switch_socket.delay(device_id, 'on' if device_state else 'off')
+            elif device_id == '401MHz-ceiling-light-bedroom-1357':
+                switch_ceiling_fan(fan_mode)
 
     r = render_template('execute.json',
                            request_id=request_id,
@@ -111,7 +114,7 @@ def resync():
         'agent_user_id' : '1099'
     }
     params = {
-        'key' : 'AIzaSyA9nUw99a4xjuxzI3eBI9Ytl3NRtWVmKNQ'
+        'key' : CONFIG['google']['resync_key']
     }
     r = requests.post(url, json=body, params=params)
     return r.text
@@ -119,13 +122,13 @@ def resync():
 @app.route('/livingroom/lights/<state>')
 def sockets(state):
     if state not in ('on', 'off'):
-        abort('404') 
+        abort('404')
 
     i = 0
     while (i < 5):
         switch_socket(4, state)
         i+=1
-    
+
     return 'Turned living room lights %s' % (state)
 
 @app.route('/listonic')
@@ -156,7 +159,7 @@ def auth():
     #    redirect_uri != 'https://oauth-redirect.googleusercontent.com/r/home-actions-188521'):
     #    return 'Hello'
 
-    access_token = 'YWJjZGVhjhkjhjkhjkjkjkhkjhZ2hpamtsbW5vcA=='
+    access_token = CONFIG['google']['access_token']
 
     print redirect_uri
 
@@ -172,5 +175,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
