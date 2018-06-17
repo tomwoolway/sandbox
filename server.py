@@ -52,6 +52,7 @@ def switch_socket(socket, state):
     rc = subprocess.call(['sudo', 'pilight-send', '-p', 'raw', '-c', '"%s"' % SOCKETS[socket][state]])
 
 def handle_execute_intent(request_id, intent):
+    print intent
     payload = intent.get('payload')
     commands = payload.get('commands')
     acted_upon_devices = []
