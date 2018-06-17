@@ -12,7 +12,7 @@ app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379'
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 
 globals = {
-    'current_fan_speed' : 'off'
+    'current_fan_speed' : 0
 }
 
 CONFIG = json.load(open('config.json'))
@@ -34,10 +34,10 @@ SOCKETS = {
 
 CEILING_FAN_PINS = {
     'light' : 18,
-    'low' : 16,
-    'med' : 22,
-    'high' : 29,
-    'off' : 12
+    1 : 16, #low
+    2 : 22, #med
+    3 : 29, #high
+    0 : 12 #off
 }
 
 OAUTH_REDIRECT_URL = '%s#access_token=%s&token_type=bearer&state=%s'
@@ -45,6 +45,7 @@ OAUTH_REDIRECT_URL = '%s#access_token=%s&token_type=bearer&state=%s'
 def switch_ceiling_fan(fan_mode):
     print "Toggling ceiling fan to %s" % fan_mode
     if fan_mode != 'light':
+        fan_mode = int(fan_mode)
         globals['current_fan_speed'] = fan_mode
 
     pin = CEILING_FAN_PINS.get(fan_mode)
@@ -87,7 +88,7 @@ def handle_execute_intent(request_id, intent):
                     switch_socket.delay(device_id, 'on' if device_state else 'off')
             elif '401MHz' in device_id:
                 switch_ceiling_fan(fan_mode)
-                device_state = False if globals['current_fan_speed'] == 'off' else 'true'
+                device_state = globals['current_fan_speed'] > 0
 
     r = render_template('execute.json',
         request_id=request_id,
@@ -104,7 +105,7 @@ def handle_query_intent(request_id, intent):
 
     r = render_template('query.json',
         request_id=request_id,
-        is_fan_on='false' if globals['current_fan_speed'] == 'off' else 'true',
+        is_fan_on='false' if globals['current_fan_speed'] == 0 else 'true',
         current_fan_speed=globals['current_fan_speed'])
 
     print r
