@@ -93,7 +93,7 @@ def handle_execute_intent(request_id, intent):
         request_id=request_id,
         device_ids=json.dumps(acted_upon_devices),
         device_state=True if device_state else False,
-        current_fan_speed=globals['current_fan_speed']))
+        current_fan_speed=globals['current_fan_speed'])
 
     return r
 
