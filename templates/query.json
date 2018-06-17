@@ -3,7 +3,7 @@
     "payload": {
         "devices": {
             "401MHz-ceilingfan-bedroom-1357" : {
-              "on" : "{{ is_fan_on }}",
+              "on" : {{ is_fan_on }},
               "online" : true,
               "currentFanSpeedSetting" : "{{ current_fan_speed }}"
             }
