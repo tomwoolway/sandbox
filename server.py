@@ -95,6 +95,8 @@ def handle_execute_intent(request_id, intent):
         device_state=True if device_state else False,
         current_fan_speed=globals['current_fan_speed'])
 
+    print r
+
     return r
 
 def handle_query_intent(request_id, intent):
