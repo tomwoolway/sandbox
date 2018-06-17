@@ -92,7 +92,7 @@ def handle_execute_intent(request_id, intent):
     r = render_template('execute.json',
         request_id=request_id,
         device_ids=json.dumps(acted_upon_devices),
-        device_state=True if device_state else False,
+        device_state='true' if device_state else 'false',
         current_fan_speed=globals['current_fan_speed'])
 
     print r
@@ -104,7 +104,7 @@ def handle_query_intent(request_id, intent):
 
     r = render_template('query.json',
         request_id=request_id,
-        is_fan_on=False if globals['current_fan_speed'] == 'off' else 'true',
+        is_fan_on='false' if globals['current_fan_speed'] == 'off' else 'true',
         current_fan_speed=globals['current_fan_speed'])
 
     print r
