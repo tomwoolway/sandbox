@@ -122,7 +122,9 @@ def google_assistant():
     for ip in inputs:
         intent = ip.get('intent')
         if intent == 'action.devices.SYNC':
-            return render_template('sync.json', request_id=request_id)
+            r = render_template('sync.json', request_id=request_id)
+            print r
+            return r
         elif intent == 'action.devices.QUERY':
             return handle_query_intent(request_id, ip)
         elif intent == 'action.devices.EXECUTE':
